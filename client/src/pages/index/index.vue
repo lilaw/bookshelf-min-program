@@ -1,30 +1,109 @@
 <template>
   <view class="index">
-    <NumberDisplay/>
-    <NumberSubmit/>
+    <form class="search" @submit="search">
+      <view class="search__row">
+        <input
+          type="number"
+          placeholder="search"
+          confirmType="done"
+          v-model="keyword"
+          class="search__input"
+        />
+        <nut-button form-type="submit" class="search__button">搜索</nut-button>
+      </view>
+    </form>
+    <view class="content-area">
+      <view v-for="book in books" :key="book.title">
+        <book-row :book="book" />
+      </view>
+    </view>
+    <text>{{ JSON.stringify(books, null, 2) }}</text>
   </view>
 </template>
 
 <script>
-import NumberDisplay from '../../components/NumberDisplay.vue'
-import NumberSubmit from '../../components/NumberSubmit.vue'
+import BookRow from "../../components/BookRow.vue";
+import { reactive, toRefs } from "vue";
+import Taro from "@tarojs/taro";
 
 export default {
-  name: 'Index',
+  name: "Index",
+  setup() {
+    const state = reactive({
+      keyword: "",
+      isLoading: true,
+      books: [],
+    });
+    // loading recommended at startup
+    search();
+
+    function search() {
+      console.log("yesssss");
+
+      Taro.cloud
+        .callFunction({
+          name: "books",
+          data: {
+            bookName: state.keyword,
+          },
+        })
+        .then((res) => {
+          console.log(res.result);
+          state.data = res.result.books;
+          state.books = res.result.books;
+          console.log(res.result.books);
+        })
+        .catch((err) => {
+          // handle error
+          console.log(err);
+        });
+    }
+    return {
+      ...toRefs(state),
+      search,
+    };
+  },
   components: {
-    NumberDisplay,
-    NumberSubmit
-  }
-}
+    BookRow,
+    BookRow,
+  },
+};
 </script>
 
-<style>
-.index {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 160px;
+<style lang="scss">
+.search {
+  display: block;
+  padding: 20px 10px 20px 10px;
+  border: 10px solid red;
+  box-sizing: border-box;
+  border: 1px solid red;
+  position: relative;
+  &__input {
+    height: 25px;
+    flex-grow: 1;
+    padding: 0 160px 0 30px;
+    border-radius: 50px;
+    border: 5px solid gray;
+    box-shadow: 0px 5px 10px 10px #fffe;
+  }
+  &__row {
+    display: flex;
+    border: 1px solid red;
+  }
+  &__button {
+    position: absolute;
+    right: 20px;
+    top: 27px;
+    height: 50px;
+    width: 150px;
+    padding: 20px;
+    font-size: 30px;
+  }
+}
+
+.content-area {
+  background-color: #f6f6f6;
+  padding: 10px;
+  padding-top: 20px;
 }
 </style>
