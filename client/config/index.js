@@ -55,6 +55,7 @@ const config = {
     },
   },
   plugins: [
+    '@tarojs/plugin-html',
     [
       "taro-plugin-sync-in-wsl",
       {
