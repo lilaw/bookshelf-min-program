@@ -1,9 +1,10 @@
 <script>
 import { reactive, toRefs } from "vue";
 import Taro from "@tarojs/taro";
+import { book } from "../../utils/book";
+
 export default {
   setup() {
-    const db = Taro.cloud.database();
     const state = reactive({
       isImgPreviewing: false,
       imgPreviewItem: [],
@@ -11,26 +12,17 @@ export default {
       isLoading: true,
       error: {},
       value: 3,
-      showSynopsis: true
+      showSynopsis: false
+    });
+    const inst = Taro.getCurrentInstance();
+
+    console.log(inst.router.params.bookId);
+    book(inst.router.params.bookId).then(res => {
+      state.book = res;
+      state.isLoading = false;
+      state.imgPreviewItem.push(res.coverImageUrl);
     });
 
-    loadBook();
-
-    function loadBook() {
-      db.collection("books")
-        .where({
-          title: "Voice of War"
-        })
-        .get()
-        .then(function setBook(res) {
-          state.book = res.data[0];
-          state.isLoading = false;
-          state.imgPreviewItem.push(state.book.coverImageUrl);
-        })
-        .catch(function setError(e) {
-          state.error = e;
-        });
-    }
     const showImgPreview = () => {
       console.log("open img preview");
       state.isImgPreviewing = true;
@@ -55,6 +47,9 @@ export default {
       openSynopsis,
       closeSynopsis
     };
+  },
+  onLoad(query) {
+    console.log(query);
   }
 };
 </script>
@@ -181,6 +176,7 @@ export default {
 
 .book {
   &__cover {
+    min-width: 200px;
     width: 200px;
     height: 300px;
     display: block;
