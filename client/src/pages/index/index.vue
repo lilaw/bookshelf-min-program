@@ -1,6 +1,6 @@
 <template>
   <view class="index">
-    <form class="search" @submit="search">
+    <form class="search">
       <view class="search__row">
         <input
           type="number"
@@ -9,7 +9,9 @@
           v-model="keyword"
           class="search__input"
         />
-        <nut-button form-type="submit" class="search__button">搜索</nut-button>
+        <nut-button form-type="submit" class="search__button" @tap="searchBookByTitle"
+          >搜索</nut-button
+        >
       </view>
     </form>
     <view class="content-area">
@@ -17,7 +19,10 @@
         <book-row :book="book" />
       </view>
     </view>
-    <text>{{ JSON.stringify(books, null, 2) }}</text>
+    <view class="loader">
+      <text class="loader__text">Loading...</text>
+    </view>
+    <!-- <text>{{ JSON.stringify(books, null, 2) }}</text> -->
   </view>
 </template>
 
@@ -25,48 +30,57 @@
 import BookRow from "../../components/BookRow.vue";
 import { reactive, toRefs } from "vue";
 import Taro from "@tarojs/taro";
+import { bookSearch } from "../../utils/book";
 
 export default {
   name: "Index",
   setup() {
     const state = reactive({
-      keyword: "",
-      isLoading: true,
-      books: [],
+      keyword: "",            // search keywork 
+      isLoading: true,        // loading data in first render
+      isLoadingMore: false,   // Infinite loading list state
+      pageNum: 1,             // what is number of page on loaded books
+      books: []               // book data
     });
     // loading recommended at startup
-    search();
+    searchBook();
 
-    function search() {
-      console.log("yesssss");
-
-      Taro.cloud
-        .callFunction({
-          name: "books",
-          data: {
-            bookName: state.keyword,
-          },
-        })
-        .then((res) => {
-          console.log(res.result);
-          state.data = res.result.books;
-          state.books = res.result.books;
-          console.log(res.result.books);
-        })
-        .catch((err) => {
-          // handle error
-          console.log(err);
-        });
+    // pull down refresh
+    const inst = Taro.getCurrentInstance();
+    inst.page.onPullDownRefresh = () => {
+      console.log("onPullDownRefresh");
+      searchBook().then(Taro.stopPullDownRefresh);
+    };
+    // at bottom fetch more data
+    inst.page.onReachBottom = () => {
+     console.log('onReachBottom') 
+      state.isLoadingMore = true 
+      bookSearch({pageNum: state.pageNum}).then(res => {
+        state.books = [...state.books, ...res.books]
+        state.pageNum = res.dataInPage
+        state.isLoadingMore = false
+      })
     }
+
+    function searchBook({query, pageNum} = {query: "", pageNum: 0}) {
+      console.log("searchig");
+      return bookSearch({query, pageNum}).then(res => {
+        state.books = res.books;
+      });
+    }
+    
+    function searchBookByTitle() {
+      return searchBook({query: state.keyword})
+    }
+
     return {
       ...toRefs(state),
-      search,
+      searchBookByTitle
     };
   },
   components: {
-    BookRow,
-    BookRow,
-  },
+    BookRow
+  }
 };
 </script>
 
@@ -105,5 +119,15 @@ export default {
   background-color: #f6f6f6;
   padding: 10px;
   padding-top: 20px;
+}
+.loader {
+  width: 100%;
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  &__text {
+    font-size: 30px;
+  }
 }
 </style>

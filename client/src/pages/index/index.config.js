@@ -1,3 +1,6 @@
 export default {
-  navigationBarTitleText: '首页'
+  navigationBarTitleText: '首页',
+  enablePullDownRefresh: true,
+  backgroundTextStyle: "dark",
+  onReachBottomDistance: 100,
 }
