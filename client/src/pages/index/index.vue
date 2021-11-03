@@ -9,7 +9,10 @@
           v-model="keyword"
           class="search__input"
         />
-        <nut-button form-type="submit" class="search__button" @tap="searchBookByTitle"
+        <nut-button
+          form-type="submit"
+          class="search__button"
+          @tap="findBookByTitle"
           >搜索</nut-button
         >
       </view>
@@ -20,62 +23,47 @@
       </view>
     </view>
     <view class="loader">
-      <text class="loader__text">Loading...</text>
+      <text class="loader__text" v-if="isLoadingMore">Loading...</text>
     </view>
-    <!-- <text>{{ JSON.stringify(books, null, 2) }}</text> -->
   </view>
 </template>
 
 <script>
 import BookRow from "../../components/BookRow.vue";
-import { reactive, toRefs } from "vue";
+import { computed, reactive, toRefs } from "vue";
 import Taro from "@tarojs/taro";
-import { bookSearch } from "../../utils/book";
+import { useStore } from "vuex";
 
 export default {
   name: "Index",
   setup() {
-    const state = reactive({
-      keyword: "",            // search keywork 
-      isLoading: true,        // loading data in first render
-      isLoadingMore: false,   // Infinite loading list state
-      pageNum: 1,             // what is number of page on loaded books
-      books: []               // book data
-    });
+    const store = useStore();
+    const state = reactive({ keyword: "" });
     // loading recommended at startup
-    searchBook();
+    const fetchRecommendedBook = () => store.dispatch("home/findBook");
+    fetchRecommendedBook();
 
     // pull down refresh
     const inst = Taro.getCurrentInstance();
     inst.page.onPullDownRefresh = () => {
       console.log("onPullDownRefresh");
-      searchBook().then(Taro.stopPullDownRefresh);
+      store.dispatch("home/findBook").then(Taro.stopPullDownRefresh);
     };
     // at bottom fetch more data
     inst.page.onReachBottom = () => {
-     console.log('onReachBottom') 
-      state.isLoadingMore = true 
-      bookSearch({pageNum: state.pageNum}).then(res => {
-        state.books = [...state.books, ...res.books]
-        state.pageNum = res.dataInPage
-        state.isLoadingMore = false
-      })
-    }
-
-    function searchBook({query, pageNum} = {query: "", pageNum: 0}) {
-      console.log("searchig");
-      return bookSearch({query, pageNum}).then(res => {
-        state.books = res.books;
-      });
-    }
-    
-    function searchBookByTitle() {
-      return searchBook({query: state.keyword})
-    }
+      console.log("onReachBottom");
+      store.commit("home/setLoadingMoreToTrue");
+      store.dispatch("home/loadMoreBook");
+    };
 
     return {
       ...toRefs(state),
-      searchBookByTitle
+      isLoading: computed(() => store.state.home.isLoading),
+      isLoadingMore: computed(() => store.state.home.isLoadingMore),
+      pageNum: computed(() => store.state.home.pageNum),
+      books: computed(() => store.state.home.books),
+      findBookByTitle: () =>
+        store.dispatch("home/findBookByTitle", state.keyword)
     };
   },
   components: {
