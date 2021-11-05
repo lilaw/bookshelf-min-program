@@ -69,6 +69,10 @@ const config = {
             outputPath: '/mnt/c/Users/Norman/Downloads/old/min',
           },
           {
+            sourcePath: "images",
+            outputPath: "/mnt/c/Users/Norman/Downloads/old/min/client/dist",
+          },
+          {
             sourcePath: "../project.config.json",
             outputPath: "/mnt/c/Users/Norman/Downloads/old/min",
           },

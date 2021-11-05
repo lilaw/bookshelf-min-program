@@ -1,8 +1,7 @@
-import store from "./store";
+import store from "./store/index";
 import { createApp } from "vue";
 import {
   Button,
-  Toast,
   Input,
   Icon,
   Rate,
@@ -11,7 +10,9 @@ import {
   Col,
   TextArea,
   ImagePreview ,
-  Popup
+  Popup,
+  Notify,
+  Tabs, TabPane 
 } from "@nutui/nutui-taro";
 import "@nutui/nutui-taro/dist/style.css";
 import "./app.scss";
@@ -30,7 +31,6 @@ const App = createApp({
 
 App.use(store)
   .use(Rate)
-  .use(Toast)
   .use(Input)
   .use(Icon)
   .use(Button)
@@ -40,5 +40,8 @@ App.use(store)
   .use(TextArea)
   .use(ImagePreview)
   .use(Popup)
+  .use(Notify)
+  .use(Tabs)
+  .use(TabPane)
 
 export default App;
