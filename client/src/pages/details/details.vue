@@ -1,51 +1,101 @@
 <script>
-import { reactive, toRefs } from "vue";
+import { computed, reactive, toRefs, watch, onUnmounted } from "vue";
 import Taro from "@tarojs/taro";
-import { book } from "../../utils/book";
+import { useStore } from "vuex";
+4;
+import debounceFn from "debounce-fn";
 
 export default {
   setup() {
+    const store = useStore();
     const state = reactive({
-      isImgPreviewing: false,
       imgPreviewItem: [],
-      book: {},
-      isLoading: true,
-      error: {},
-      value: 3,
-      showSynopsis: false
+      rating: -1,
+      note: "",
+      isShowSynopsis: false
     });
     const inst = Taro.getCurrentInstance();
+    const book = computed(() => store.state.details.book);
+    const addToListItem = () =>
+      store
+        .dispatch("details/addToListItem")
+        .catch(err => Notify.warn(err.message));
+    const removeFromListItem = () =>
+      store
+        .dispatch("details/removeFromListItem")
+        .catch(err => Notify.warn(err.message));
+    const finishReading = () =>
+      store
+        .dispatch("details/finishReading")
+        .catch(err => Notify.warn(err.message));
+    const unfinishReading = () =>
+      store
+        .dispatch("details/unfinishReading")
+        .catch(err => Notify.warn(err.message));
 
-    console.log(inst.router.params.bookId);
-    book(inst.router.params.bookId).then(res => {
-      state.book = res;
-      state.isLoading = false;
-      state.imgPreviewItem.push(res.coverImageUrl);
+    const review = computed(() => store.getters["details/review"]);
+    const updateReview = () =>
+      store.dispatch("details/rateBook", state.rating).catch(() => {
+        Taro.showToast({
+          title: "网络失败",
+          duration: 2000
+        });
+        // restore previous value
+        state.rating = review.value;
+      });
+    const note = computed(() => store.getters["details/note"]);
+    const writeNote = () => store.dispatch("details/writeNote", state.note);
+    const debounceWriteNote = debounceFn(writeNote, { wait: 2000 });
+
+    watch(book, book => {
+      state.imgPreviewItem = [book.coverImageUrl];
+    });
+    watch(review, rating => (state.rating = rating));
+    watch(note, note => (state.note = note));
+
+    // load data at startujp
+    store.dispatch("details/fetchBook", inst.router.params.bookId);
+    store.dispatch("details/fetchListItem", inst.router.params.bookId);
+
+    onUnmounted(() => {
+      store.commit("details/resetData");
     });
 
-    const showImgPreview = () => {
-      console.log("open img preview");
-      state.isImgPreviewing = true;
+    function showImgPreview() {
       Taro.previewImage({
         current: state.imgPreviewItem[0], // 当前显示图片的http链接
         urls: state.imgPreviewItem // 需要预览的图片http链接列表
       });
-    };
-
-    function openSynopsis() {
-      state.showSynopsis = true;
-      console.log("tap");
     }
 
-    function closeSynopsis() {
-      console.log("closeSynopsis");
+    function openSynopsis() {
+      state.isShowSynopsis = true;
     }
 
     return {
       ...toRefs(state),
+      isLoading: computed(() => store.state.details.isLoading),
+      isLoadingListItem: computed(() => store.state.details.isLoadingListItemk),
+      showAddButton: computed(() => store.getters["details/showAddButton"]),
+      showRemoveButton: computed(
+        () => store.getters["details/showRemoveButton"]
+      ),
+      showFinishButton: computed(
+        () => store.getters["details/showFinishButton"]
+      ),
+      showUnfinishButton: computed(
+        () => store.getters["details/showUnfinishButton"]
+      ),
+      addToListItem,
+      removeFromListItem,
+      finishReading,
+      unfinishReading,
+      updateReview,
+      debounceWriteNote,
+      writeNote,
+      book,
       showImgPreview,
-      openSynopsis,
-      closeSynopsis
+      openSynopsis
     };
   },
   onLoad(query) {
@@ -57,18 +107,53 @@ export default {
 <template>
   <view>
     <view v-if="isLoading">loading</view>
-    <view class="details" v-else>
+    <view :class="{ details: true, 'disable-scroll': isShowSynopsis }" v-else>
       <view class="details__head-area">
         <image
           :src="book.coverImageUrl"
           :alt="`${book.title} cover`"
-          class="book__cover"
+          class="book-detail__cover"
           @tap="showImgPreview"
         />
         <view class="details__title-and-author-area">
-          <text class="book__title">{{ book.title }}</text>
-          <text class="book__author">{{ book.author }}</text>
-          <text class="book__publisher">{{ book.publisher }}</text>
+          <text class="book-detail__title">{{ book.title }}</text>
+          <text class="book-detail__author">{{ book.author }}</text>
+          <text class="book-detail__publisher">{{ book.publisher }}</text>
+
+          <view class="details__control-area" v-if="!isLoadingListItem">
+            <nut-button
+              shape="square"
+              type="primary"
+              class="button button__add"
+              v-if="showAddButton"
+              @tap="addToListItem"
+              >Add</nut-button
+            >
+            <nut-button
+              shape="square"
+              type="primary"
+              class="button button__remove"
+              v-if="showRemoveButton"
+              @tap="removeFromListItem"
+              >Remove</nut-button
+            >
+            <nut-button
+              shape="square"
+              type="primary"
+              class="button button__finish"
+              v-if="showFinishButton"
+              @tap="finishReading"
+              >Finish</nut-button
+            >
+            <nut-button
+              shape="square"
+              type="primary"
+              class="button button__unfinish"
+              v-if="showUnfinishButton"
+              @tap="unfinishReading"
+              >Unfinish</nut-button
+            >
+          </view>
         </view>
       </view>
       <view class="details__meta-area">
@@ -91,44 +176,49 @@ export default {
           >{{ book.synopsis.slice(0, 200) }}...</text
         >
       </view>
-      <view class="details__rate-area">
-        <text class="rate__heading heading">Rate this book</text>
-        <nut-rate
-          :total="6"
-          v-model="value"
-          active-color="#59A5F0"
-          spacing="50"
-          class="rate_stars"
-        />
-      </view>
-      <view class="details__note-area">
-        <text class="note__heading heading">Note: </text>
-        <nut-textarea
-          v-model="value"
-          rows="10"
-          autosize
-          class="note__textarea"
-        />
-      </view>
+
+      <block v-if="showRemoveButton">
+        <view class="details__rate-area">
+          <text class="rate__heading heading">Rate this book</text>
+          <nut-rate
+            :total="6"
+            v-model="rating"
+            active-color="#59A5F0"
+            spacing="50"
+            class="rate_stars"
+            @change="updateReview"
+          />
+        </view>
+        <view class="details__note-area">
+          <text class="note__heading heading">Note: </text>
+          <nut-textarea
+            v-model="note"
+            rows="10"
+            autosize
+            class="note__textarea"
+            @blur="writeNote"
+            @change="debounceWriteNote"
+          />
+        </view>
+      </block>
 
       <nut-popup
         position="bottom"
         closeable
         round
         pop-class="synopsis__popup"
-        v-model:visible="showSynopsis"
-        @close="closeSynopsis"
+        v-model:visible="isShowSynopsis"
         ><text>{{ book.synopsis }}</text></nut-popup
       >
-      <text>{{ JSON.stringify(book, null, 2) }}</text>
     </view>
   </view>
 </template>
 
 <style lang="scss">
 .details {
-  width: calc(750px - 60px);
-  margin: 30px;
+  width: 100vw;
+  padding: 30px;
+  box-sizing: border-box;
 
   &__head-area {
     display: flex;
@@ -167,6 +257,11 @@ export default {
     flex-direction: column;
     row-gap: 30px;
   }
+  &__control-area {
+    margin-top: 40px;
+    display: flex;
+    column-gap: 30px;
+  }
 }
 
 .icon__ebook {
@@ -174,7 +269,7 @@ export default {
   height: 45px;
 }
 
-.book {
+.book-detail {
   &__cover {
     min-width: 200px;
     width: 200px;
@@ -230,5 +325,15 @@ export default {
   &__textarea {
     font-size: 40px;
   }
+}
+.button {
+  width: 150px;
+  height: 70px;
+  font-size: 35px;
+}
+.disable-scroll {
+  // 禁止被穿透的组件滚动 https://github.com/NervJS/taro/issues/5984#issuecomment-614502302
+  overflow: hidden;
+  height: 100vh;
 }
 </style>
