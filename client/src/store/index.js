@@ -2,6 +2,7 @@ import { createStore } from "vuex";
 import home from "./modules/home";
 import login from "./modules/login";
 import details from "./modules/details";
+import readingList from "./modules/readingList";
 
 export default createStore({
   // state: {},
@@ -10,6 +11,7 @@ export default createStore({
   modules: {
     home,
     login,
-    details
+    details,
+    readingList
   }
 });
