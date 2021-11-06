@@ -1,18 +1,17 @@
 import Taro from "@tarojs/taro";
-import { useUser } from "./helper";
 
 export async function listItems(user) {
-  // const db = Taro.cloud.database();
-
-  // const result = await db
-  //   .collection("listItems")
-  //   .where({ ownerId: user._id })
-  //   .get()
-  //   .then(res => ({ status: "ok", message: res.errMsg, data: res.data[0] }))
-  //   .catch(() =>
-  //     Promise.reject({ status: "error", message: "failed to fetch list items" })
-  //   );
-  // return result;
+  return Taro.cloud
+    .callFunction({
+      name: "listItems",
+      data: {
+        userId: user._id
+      },
+    })
+    .then(res => ({ status: "ok", message: res.errMsg, data: res.result.data.list }))
+    .catch(() =>
+      Promise.reject({ status: "error", message: "failed to fetch list items" })
+    );
 }
 
 export async function listItem(user, bookId) {
@@ -59,7 +58,7 @@ export async function createListItem(user, bookId) {
         ownerId: user._id,
         bookId: bookId,
         rating: -1,
-        notes: "",
+        note: "",
         startDate: Date.now(),
         finishDate: null
       }
