@@ -1,13 +1,22 @@
+import {login} from "../../utils/auth"
 export default {
   namespaced: true,
   state: () => ({
     hasLogged: false,
-    userInfo: {
-      _id: "18ed09686180b97902fa174575d84fc3",
-      username: "anonymous"
-    }
+    userInfo: {}
   }),
-  mutations: {},
-  actions: {}
+  mutations: {
+    setUser(state, userInfo) {
+      state.hasLogged = true,
+      state.userInfo = userInfo
+    }
+  },
+  actions: {
+    login({commit}) {
+      return login().then(res => {
+        commit("setUser", res.data)
+      })
+    }
+  }
   // getters: { ... }
 };

@@ -16,16 +16,18 @@ import {
 } from "@nutui/nutui-taro";
 import "@nutui/nutui-taro/dist/style.css";
 import "./app.scss";
-
 import Taro from "@tarojs/taro";
 
 const App = createApp({
   onShow(options) {},
   // 入口组件不需要实现 render 方法，即使实现了也会被 taro 所覆盖
-  mounted() {
+  beforeCreate() {
     if (process.env.TARO_ENV === "weapp") {
       Taro.cloud.init();
     }
+  },
+  mounted() {
+    store.dispatch('login/login').then(() => console.log("logined"))
   }
 });
 
