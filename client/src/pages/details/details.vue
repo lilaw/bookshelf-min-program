@@ -2,7 +2,6 @@
 import { computed, reactive, toRefs, watch, onUnmounted } from "vue";
 import Taro from "@tarojs/taro";
 import { useStore } from "vuex";
-4;
 import debounceFn from "debounce-fn";
 
 export default {
@@ -49,6 +48,7 @@ export default {
 
     watch(book, book => {
       state.imgPreviewItem = [book.coverImageUrl];
+      Taro.setNavigationBarTitle({title: book.title})
     });
     watch(review, rating => (state.rating = rating));
     watch(note, note => (state.note = note));
@@ -106,8 +106,7 @@ export default {
 
 <template>
   <view>
-    <view v-if="isLoading">loading</view>
-    <view :class="{ details: true, 'disable-scroll': isShowSynopsis }" v-else>
+    <view :class="{ details: true, 'disable-scroll': isShowSynopsis }" v-if="!isLoading">
       <view class="details__head-area">
         <image
           :src="book.coverImageUrl"
