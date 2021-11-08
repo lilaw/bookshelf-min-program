@@ -1,73 +1,56 @@
 <script>
-import { reactive, toRefs } from "vue";
+import { computed, reactive, toRefs } from "vue";
 import BookRow from "../../components/BookRow.vue";
 import Taro from "@tarojs/taro";
+import { useStore } from "vuex";
 
 export default {
   setup() {
+    const store = useStore();
     const state = reactive({
-      tab1value: "0",
-      list3: Array.from(new Array(2).keys()),
-      list4: Array.from(new Array(10).keys()),
-      list5: Array.from(new Array(2).keys()),
-      keyword: "",
-      isLoading: true,
-      books: [],
+      tab1value: "0"
     });
     // loading recommended at startup
-    search();
+    const finish = computed(() => store.state.readingList.finish);
+    const unfinish = computed(() => store.state.readingList.unfinish);
+    
+    store.dispatch("readingList/fetchListItems");
 
-    function search() {
-      console.log("yesssss");
-
-      Taro.cloud
-        .callFunction({
-          name: "books",
-          data: {
-            bookName: state.keyword,
-          },
-        })
-        .then((res) => {
-          console.log(res.result);
-          state.books = res.result.books;
-          console.log(res.result.books);
-        })
-        .catch((err) => {
-          // handle error
-          console.log(err);
-        });
-    }
+    const inst = Taro.getCurrentInstance();
+    inst.page.onPullDownRefresh = () => {
+      store
+        .dispatch("readingList/fetchListItems")
+        .then(Taro.stopPullDownRefresh);
+    };
+    inst.page.onTabItemTap = () => store.dispatch("readingList/fetchListItems");
     return {
       ...toRefs(state),
-      search,
+      finish,
+      unfinish
     };
   },
   components: {
-    BookRow,
+    BookRow
   },
 };
 </script>
 
 <template>
-  <nut-tabs v-model="tab1value" class="dfd">
+  <nut-tabs v-model="tab1value" >
     <nut-tabpane title="阅读中" class="reading">
-
-tab1
-      <view v-for="book in books" :key="book.title">
-        <book-row :book="book"  size="small" />
+      <view v-for="unf in unfinish" :key="unf.book.title">
+        <book-row :book="unf.book" size="small" />
       </view>
-
     </nut-tabpane>
     <nut-tabpane title="已读完" class="finish">
-      Tab 2
+      <view v-for="fin in finish" :key="fin.book.title">
+        <book-row :book="fin.book" size="small" />
+      </view>
     </nut-tabpane>
   </nut-tabs>
 </template>
 
 <style lang="scss">
-.reading {
-
-}
 
 // override nutui default style
 .nut-tabs {
@@ -75,8 +58,8 @@ tab1
     height: 90px;
   }
   &__titles-item.active:before {
-   width: 80px; 
-   height: 5px;
+    width: 80px;
+    height: 5px;
   }
   &__titles-item {
     font-size: 30px;
